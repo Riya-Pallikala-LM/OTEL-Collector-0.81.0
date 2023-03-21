@@ -21,17 +21,23 @@ ARG COLLECTD_VERSION=5.8.0-sfx0
 ARG COLLECTD_COMMIT=4d3327b14cf4359029613baf4f90c4952702105e
 ARG DOCKER_REPO=docker.io
 
-######### Java monitor dependencies and monitor jar compilation
-FROM ${DOCKER_REPO}/ubuntu:18.04 as java
+
+######## Base image for subsequent stages ########
+FROM ${DOCKER_REPO}/python:3.11-slim-bullseye as base
 
 ARG ARCH
+ENV DEBIAN_FRONTEND noninteractive
+
+RUN apt-get update -qq
+
+
+######## Java monitor dependencies and monitor jar compilation ########
+FROM base as java
+
 ARG JDK_VERSION
 ARG MAVEN_VERSION
 
-ENV DEBIAN_FRONTEND noninteractive
-
-RUN apt-get update -qq &&\
-    apt-get install -qq -y wget
+RUN apt-get install -qq -y wget
 
 ENV OPENJDK_BASE_URL="https://github.com/adoptium/temurin11-binaries/releases/download"
 
@@ -76,106 +82,72 @@ RUN cd /usr/src/agent-java/jmx &&\
 RUN rm -rf /tmp/apache-maven*
 
 
-###### Python bundle builder image ######
-FROM ${DOCKER_REPO}/ubuntu:18.04 as python
+######## Collectd builder image ########
+FROM base as collectd
 
-ARG ARCH
-ARG PYTHON_VERSION
-
-ENV DEBIAN_FRONTEND noninteractive
-
-RUN sed -i -e '/^deb-src/d' /etc/apt/sources.list &&\
-    apt-get update -qq &&\
-    apt-get install -qq -y \
-      curl \
-      dpkg \
-      net-tools \
-      software-properties-common \
-      wget \
-      autoconf \
-      automake \
-      autotools-dev \
-      bison \
-      build-essential \
-      debhelper \
-      debian-archive-keyring \
-      debootstrap \
-      devscripts \
-      dh-make \
-      dpatch \
-      fakeroot \
-      flex \
-      gcc \
-      git-core \
-      iptables-dev \
-      libatasmart-dev \
-      libcurl4-openssl-dev \
-      libdbi0-dev \
-      libdbus-1-dev \
-      libdbus-glib-1-dev \
-      libdistro-info-perl \
-      libesmtp-dev \
-      libexpat1-dev \
-      libffi-dev \
-      libganglia1-dev \
-      libgcrypt11-dev \
-      libglib2.0-dev \
-      libldap2-dev \
-      libltdl-dev \
-      libmemcached-dev \
-      libmicrohttpd-dev \
-      libmnl-dev \
-      libmodbus-dev \
-      libnotify-dev \
-      liboping-dev \
-      libow-dev \
-      libpcap-dev \
-      libperl-dev \
-      libpq-dev \
-      libprotobuf-c0-dev \
-      librabbitmq-dev \
-      librdkafka-dev \
-      librrd-dev \
-      libsensors4-dev \
-      libsnmp-dev \
-      libssl-dev \
-      libtool \
-      libudev-dev \
-      libvarnishapi-dev \
-      libvirt-dev \
-      libxml2-dev \
-      libyajl-dev \
-      lsb-release \
-      pbuilder \
-      pkg-config \
-      po-debconf \
-      protobuf-c-compiler \
-      quilt \
-      zlib1g-dev
-
-RUN wget -nv https://dev.mysql.com/get/mysql-apt-config_0.8.12-1_all.deb && \
-    apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 467B942D3A79BD29 && \
-    dpkg -i mysql-apt-config_0.8.12-1_all.deb && \
-    rm -f mysql-apt-config_0.8.12-1_all.deb && \
-    apt-get update -qq && apt-get install -qq -y libmysqlclient-dev libcurl4-gnutls-dev
-
-RUN wget -nv -O /tmp/Python-${PYTHON_VERSION}.tgz https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz &&\
-    cd /tmp &&\
-    tar -xzf Python-${PYTHON_VERSION}.tgz && \
-    cd Python-${PYTHON_VERSION} && \
-    ./configure --enable-shared --enable-ipv6 --with-system-ffi --with-system-expat && \
-    make -j`nproc` && make install libinstall && \
-    ldconfig
-
-RUN rm -rf /tmp/Python*
-
-
-###### Collectd builder image ######
-FROM python as collectd
-
-ARG ARCH
 ARG COLLECTD_VERSION
 ARG COLLECTD_COMMIT
+
+RUN apt-get install -qq -y \
+        autoconf \
+        bison \
+        build-essential \
+        default-libmysqlclient-dev \
+        flex \
+        gcc \
+        gnupg \
+        libatasmart-dev \
+        libcurl4-openssl-dev \
+        libdbi0-dev \
+        libdbus-1-dev \
+        libdbus-glib-1-dev \
+        libdistro-info-perl \
+        libesmtp-dev \
+        libexpat1-dev \
+        libffi-dev \
+        libganglia1-dev \
+        libgcrypt20-dev \
+        libglib2.0-dev \
+        libiptc-dev \
+        libldap2-dev \
+        libltdl-dev \
+        libmemcached-dev \
+        libmicrohttpd-dev \
+        libmnl-dev \
+        libmodbus-dev \
+        libnotify-dev \
+        liboping-dev \
+        libow-dev \
+        libpcap-dev \
+        libperl-dev \
+        libpq-dev \
+        libprotobuf-c-dev \
+        librabbitmq-dev \
+        librdkafka-dev \
+        librrd-dev \
+        libsnmp-dev \
+        libssl-dev \
+        libtool \
+        libudev-dev \
+        libvarnishapi-dev \
+        libvirt-dev \
+        libxml2-dev \
+        libyajl-dev \
+        lsb-release \
+        pkg-config \
+        protobuf-c-compiler \
+        software-properties-common \
+        wget \
+        zlib1g-dev
+
+# Debian Bullseye only provides lm-sensors 3.6, but collectd 5.8 needs lm-sensors 3.4.
+RUN cd /tmp &&\
+    wget -nv -O lm-sensors.tar.gz https://github.com/lm-sensors/lm-sensors/archive/refs/tags/V3-4-0.tar.gz &&\
+    tar -xzf lm-sensors.tar.gz &&\
+    cd lm-sensors-3-4-0 &&\
+    make install PREFIX=/usr &&\
+    cd /tmp &&\
+    rm -rf lm-sensors*
 
 RUN cd /tmp &&\
     wget -nv https://github.com/signalfx/collectd/archive/${COLLECTD_COMMIT}.tar.gz &&\
@@ -188,12 +160,12 @@ RUN cd /tmp &&\
 RUN echo "#!/bin/bash" > /usr/src/collectd/version-gen.sh &&\
     echo "printf \${COLLECTD_VERSION//-/.}" >> /usr/src/collectd/version-gen.sh
 
-COPY --from=java /opt/root/jdk/ /opt/root/jdk/
-
 WORKDIR /usr/src/collectd
 
+COPY --from=java /opt/root/jdk/ /opt/root/jdk/
+
 ARG extra_cflags="-O2"
-ENV CFLAGS "-Wno-deprecated-declarations -Wno-format-truncation -fPIC $extra_cflags"
+ENV CFLAGS "-Wno-error -fPIC $extra_cflags"
 ENV CXXFLAGS $CFLAGS
 ENV JAVA_HOME /opt/root/jdk
 
@@ -267,10 +239,10 @@ RUN rm -rf /tmp/patchelf*
 
 # For some reason libvarnishapi doesn't properly depend on libm, so make it
 # right.
-RUN patchelf --add-needed libm-2.23.so /opt/deps/libvarnishapi.so.1.0.6
+RUN patchelf --add-needed libm-2.28.so /opt/deps/libvarnishapi.so.2.0.0
 
 
-###### Python Plugin Image ######
+######## Python Plugin Image ########
 FROM collectd as python-plugins
 
 ARG PIP_VERSION
@@ -310,17 +282,15 @@ RUN find /usr/local/lib/python3.11 -wholename "*test*.key" -delete -or -wholenam
 
 
 ####### Extra packages that don't make sense to pull down in any other stage ########
-FROM ${DOCKER_REPO}/ubuntu:18.04 as extra-packages
+FROM base as extra-packages
 
-ENV DEBIAN_FRONTEND noninteractive
-
-RUN apt-get update -qq &&\
-    apt-get install -qq -y \
+RUN apt-get install -qq -y \
         curl \
         host \
         iproute2 \
         netcat \
-        netcat.openbsd
+        netcat-openbsd \
+        procps
 
 COPY scripts/collect-libs /opt/collect-libs
 
@@ -391,7 +361,7 @@ COPY --from=collectd /usr/local/bin/patchelf /bin/
 # Pull in the Linux dynamic link loader at a fixed path across all
 # architectures.  Binaries will later be patched to use this interpreter
 # natively.
-COPY --from=extra-packages /lib/*-linux-gnu/ld-2.27.so /bin/ld-linux.so
+COPY --from=extra-packages /lib/*-linux-gnu/ld-2.*.so /bin/ld-linux.so
 
 # Java dependencies
 COPY --from=extra-packages /opt/root/jre/ /jre
