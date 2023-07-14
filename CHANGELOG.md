@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### 🛑 Breaking changes 🛑
+
+- (Splunk) Fluentd disabled by default for the Windows Chocolatey package ([#3377](https://github.com/signalfx/splunk-otel-collector/pull/3377))
+  - Specify the `/WITH_FLUENTD:true` parameter to enable installation
+
 ### 🧰 Bug fixes 🧰
 
 - (Splunk) Discovery mode: Ensure all successful observers are used in resulting receiver creator instance ([#3391](https://github.com/signalfx/splunk-otel-collector/pull/3391))
