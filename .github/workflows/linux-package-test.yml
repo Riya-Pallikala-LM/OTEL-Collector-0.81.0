@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - update-bundle-cache
   pull_request:
     paths:
       - '.github/workflows/linux-package-test.yml'
@@ -86,6 +87,8 @@ jobs:
         with:
           path: .cache/buildx/agent-bundle-${{ matrix.ARCH }}
           key: agent-bundle-buildx-${{ matrix.ARCH }}-${{ hashFiles('internal/signalfx-agent/bundle/**') }}
+          restore-keys: |
+            agent-bundle-buildx-${{ matrix.ARCH }}-
 
       - uses: docker/setup-qemu-action@v2
         if: ${{ matrix.ARCH != 'amd64' }}

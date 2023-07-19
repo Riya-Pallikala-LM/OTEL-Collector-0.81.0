@@ -27,6 +27,7 @@ IMAGE_NAME="agent-bundle"
 OUTPUT="${IMAGE_NAME}_linux_${ARCH}.tar.gz"
 output_tar=$(basename "$OUTPUT" .gz)
 CACHE_DIR="${REPO_DIR}/.cache/buildx/${IMAGE_NAME}-${ARCH}"
+CACHE_TO_DIR="${CACHE_DIR}-new"
 CACHE_OPTS=""
 
 export DOCKER_BUILDKIT=1
@@ -34,8 +35,9 @@ export DOCKER_BUILDKIT=1
 if [[ "$CI" = "true" ]]; then
     # create and use the docker-container builder for local caching when running in github or gitlab
     mkdir -p "$CACHE_DIR"
+    mkdir -p "$CACHE_TO_DIR"
     docker buildx create --name $IMAGE_NAME --driver docker-container
-    CACHE_OPTS="--builder ${IMAGE_NAME} --cache-from=type=local,src=${CACHE_DIR} --cache-to=type=local,dest=${CACHE_DIR} --load"
+    CACHE_OPTS="--builder ${IMAGE_NAME} --cache-from=type=local,src=${CACHE_DIR} --cache-to=type=local,dest=${CACHE_TO_DIR} --load"
 fi
 
 docker buildx build \
@@ -58,3 +60,9 @@ docker export $cid | tar -C ${tmpdir}/${IMAGE_NAME} -xf -
 rm -rf ${tmpdir}/${IMAGE_NAME}/{proc,sys,dev,etc} ${tmpdir}/${IMAGE_NAME}/.dockerenv
 mkdir -p "$OUTPUT_DIR"
 (cd $tmpdir && tar -zcf ${OUTPUT_DIR}/${OUTPUT} *)
+
+if [[ "$CI" = "true" ]]; then
+    # replace cache directory with the latest
+    rm -rf "$CACHE_DIR"
+    mv "$CACHE_TO_DIR" "$CACHE_DIR"
+fi
