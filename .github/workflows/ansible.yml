@@ -12,6 +12,7 @@ on:
       - 'deployments/ansible/galaxy.yml'
     branches:
       - main
+      - ansible-dotnet-instrumentation-test
   pull_request:
     paths:
       - '.github/workflows/ansible.yml'
