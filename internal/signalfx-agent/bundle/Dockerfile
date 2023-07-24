@@ -177,6 +177,17 @@ ARG ARCH
 ARG COLLECTD_VERSION
 ARG COLLECTD_COMMIT
 
+# Compile patchelf statically from source
+RUN cd /tmp &&\
+    wget -nv https://nixos.org/releases/patchelf/patchelf-0.11/patchelf-0.11.tar.gz &&\
+    tar -xzf patchelf*.tar.gz &&\
+    cd patchelf-0.11* &&\
+    ./configure LDFLAGS="-static" &&\
+    make &&\
+    make install
+
+RUN rm -rf /tmp/patchelf*
+
 RUN cd /tmp &&\
     wget -nv https://github.com/signalfx/collectd/archive/${COLLECTD_COMMIT}.tar.gz &&\
     tar -xzf ${COLLECTD_COMMIT}.tar.gz &&\
@@ -254,24 +265,13 @@ RUN make -j`nproc` &&\
 COPY scripts/collect-libs /opt/collect-libs
 RUN /opt/collect-libs /opt/deps /usr/sbin/collectd /usr/lib/collectd/
 
-# Compile patchelf statically from source
-RUN cd /tmp &&\
-    wget -nv https://nixos.org/releases/patchelf/patchelf-0.11/patchelf-0.11.tar.gz &&\
-    tar -xzf patchelf*.tar.gz &&\
-    cd patchelf-0.11* &&\
-    ./configure LDFLAGS="-static" &&\
-    make &&\
-    make install
-
-RUN rm -rf /tmp/patchelf*
-
 # For some reason libvarnishapi doesn't properly depend on libm, so make it
 # right.
 RUN patchelf --add-needed libm-2.23.so /opt/deps/libvarnishapi.so.1.0.6
 
 
 ###### Python Plugin Image ######
-FROM collectd as python-plugins
+FROM python as python-plugins
 
 ARG PIP_VERSION
 
