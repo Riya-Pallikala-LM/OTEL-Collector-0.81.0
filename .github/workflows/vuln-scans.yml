@@ -64,7 +64,7 @@ jobs:
           key: agent-bundle-buildx-${{ matrix.ARCH }}-${{ hashFiles('internal/signalfx-agent/bundle/**') }}
           restore-keys: |
             agent-bundle-buildx-${{ matrix.ARCH }}-
-      - uses: docker/setup-qemu-action@v2
+      - uses: docker/setup-qemu-action@v3
         if: ${{ matrix.ARCH != 'amd64' }}
         with:
           platforms: ${{ matrix.ARCH }}
@@ -89,7 +89,7 @@ jobs:
       fail-fast: false
     steps:
       - uses: actions/checkout@v3
-      - uses: docker/setup-qemu-action@v2
+      - uses: docker/setup-qemu-action@v3
         if: ${{ matrix.ARCH != 'amd64' }}
         with:
           platforms: ${{ matrix.ARCH }}
@@ -120,7 +120,7 @@ jobs:
       GRYPE_PLATFORM: ${{ matrix.ARCH }}
     steps:
       - uses: actions/checkout@v3
-      - uses: docker/setup-qemu-action@v2
+      - uses: docker/setup-qemu-action@v3
         if: ${{ matrix.ARCH != 'amd64' }}
         with:
           platforms: ${{ matrix.ARCH }}

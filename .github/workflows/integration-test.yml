@@ -48,7 +48,7 @@ jobs:
           key: agent-bundle-buildx-${{ matrix.ARCH }}-${{ hashFiles('internal/signalfx-agent/bundle/**') }}
           restore-keys: |
             agent-bundle-buildx-${{ matrix.ARCH }}-
-      - uses: docker/setup-qemu-action@v2
+      - uses: docker/setup-qemu-action@v3
         if: ${{ matrix.ARCH != 'amd64' }}
         with:
           platforms: ${{ matrix.ARCH }}
@@ -84,7 +84,7 @@ jobs:
         with:
           name: otelcol-${{ matrix.ARCH }}
           path: ./bin
-      - uses: docker/setup-qemu-action@v2
+      - uses: docker/setup-qemu-action@v3
         if: ${{ matrix.ARCH != 'amd64' }}
         with:
           platforms: ${{ matrix.ARCH }}
@@ -117,7 +117,7 @@ jobs:
         with:
           name: otelcol-${{ matrix.ARCH }}
           path: ./bin
-      - uses: docker/setup-qemu-action@v2
+      - uses: docker/setup-qemu-action@v3
         if: ${{ matrix.ARCH != 'amd64' }}
         with:
           platforms: ${{ matrix.ARCH }}
